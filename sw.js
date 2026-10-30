@@ -1,5 +1,5 @@
 // Service Worker para Radio Player PWA
-const CACHE_NAME = 'radio-player-v1';
+const CACHE_NAME = 'radio-player-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',
