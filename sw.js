@@ -1,7 +1,7 @@
 // Service Worker para Radio Player PWA
 const CACHE_NAME = 'radio-player-v1';
 const ASSETS = [
-  './Radios_en_línea.html',
+  './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
@@ -28,29 +28,28 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: estrategia network-first con fallback a cache
+// Fetch: network-first con fallback a cache
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // NO interceptar streams de audio, la API de radios ni peticiones no-GET
+  // NO interceptar streams de audio, API de radios ni peticiones no-GET
   if (req.method !== 'GET') return;
   if (url.origin === self.location.origin && /\.(mp3|aac|ogg|m3u8|pls)(\?|$)/i.test(url.pathname)) return;
   if (url.hostname.includes('radio-browser.info')) return;
 
-  // Solo cachear mismo origen (HTML, CSS, iconos)
+  // Solo cachear mismo origen
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
     fetch(req)
       .then((res) => {
-        // Guardar copia fresca en caché
         if (res && res.status === 200 && res.type === 'basic') {
           const copy = res.clone();
           caches.open(CACHE_NAME).then((c) => c.put(req, copy));
         }
         return res;
       })
-      .catch(() => caches.match(req).then((cached) => cached || caches.match('./Radios_en_línea.html')))
+      .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
   );
 });
