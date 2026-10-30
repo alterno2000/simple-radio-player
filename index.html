@@ -421,45 +421,22 @@
     themeToggle.onclick = () => applyTheme(document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
     initTheme();
 
-// ================== API ==================
-const MIRRORS = [
-    'https://all.api.radio-browser.info/json',
-    'https://de1.api.radio-browser.info/json',
-    'https://nl1.api.radio-browser.info/json',
-    'https://at1.api.radio-browser.info/json'
-];
-let currentMirror = MIRRORS[0];
-
-async function fetchWithTimeout(url, ms = 8000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), ms);
-    try {
-        const res = await fetch(url, {
-            signal: controller.signal,
-            headers: { 'Accept': 'application/json' }
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return await res.json();
-    } finally {
-        clearTimeout(timer);
-    }
-}
-
-async function fetchAPI(path) {
-    const ordered = [currentMirror, ...MIRRORS.filter(m => m !== currentMirror)];
-    let lastError = null;
-    for (const mirror of ordered) {
-        try {
-            const data = await fetchWithTimeout(mirror + path, 8000);
-            currentMirror = mirror;
-            return data;
-        } catch (err) {
-            console.warn('Mirror falló:', mirror, err.message);
-            lastError = err;
+    // ================== API ==================
+    const MIRRORS = ['https://de1.api.radio-browser.info/json','https://nl1.api.radio-browser.info/json','https://at1.api.radio-browser.info/json','https://fi1.api.radio-browser.info/json'];
+    let currentMirror = MIRRORS[0];
+    async function fetchAPI(path) {
+        const ordered = [currentMirror, ...MIRRORS.filter(m => m !== currentMirror)];
+        let lastError = null;
+        for (const mirror of ordered) {
+            try {
+                const res = await fetch(mirror + path);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                currentMirror = mirror;
+                return await res.json();
+            } catch (err) { lastError = err; }
         }
+        throw new Error('Todos los mirrors fallaron: ' + (lastError?.message || ''));
     }
-    throw new Error('Todos los mirrors fallaron: ' + (lastError?.message || ''));
-}
 
     // ================== REFERENCIAS ==================
     const audio = document.getElementById('audioPlayer');
@@ -738,28 +715,14 @@ async function fetchAPI(path) {
 
     // ================== FILTROS ==================
     async function loadFilterOptions() {
-    try {
-        const countries = await fetchAPI('/countries');
-        const sortedCountries = (countries || [])
-            .filter(c => c.name && c.stationcount > 0)
-            .sort((a, b) => a.name.localeCompare(b.name));
-        fillSelect(countrySelect, sortedCountries, 'Todos');
-    } catch (err) {
-        console.error('Error cargando países:', err);
-        countrySelect.innerHTML = '<option value="">Todos (error al cargar)</option>';
+        try {
+            const [countries, languages] = await Promise.all([fetchAPI('/countries'), fetchAPI('/languages')]);
+            const sortedCountries = (countries || []).filter(c => c.name && c.stationcount > 0).sort((a, b) => a.name.localeCompare(b.name));
+            const sortedLanguages = (languages || []).filter(l => l.name && l.stationcount > 0).sort((a, b) => a.name.localeCompare(b.name));
+            fillSelect(countrySelect, sortedCountries, 'Todos');
+            fillSelect(languageSelect, sortedLanguages, 'Todos');
+        } catch (err) { console.error('Error filtros:', err); }
     }
-
-    try {
-        const languages = await fetchAPI('/languages');
-        const sortedLanguages = (languages || [])
-            .filter(l => l.name && l.stationcount > 0)
-            .sort((a, b) => a.name.localeCompare(b.name));
-        fillSelect(languageSelect, sortedLanguages, 'Todos');
-    } catch (err) {
-        console.error('Error cargando idiomas:', err);
-        languageSelect.innerHTML = '<option value="">Todos (error al cargar)</option>';
-    }
-}
     function fillSelect(select, items, defaultLabel) {
         select.innerHTML = `<option value="">${defaultLabel}</option>`;
         items.forEach(item => {
@@ -1146,7 +1109,7 @@ async function fetchAPI(path) {
   // ================== PWA: Registro del Service Worker ==================
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js?v=2')
+      navigator.serviceWorker.register('sw.js')
         .then((reg) => console.log('✅ Service Worker registrado:', reg.scope))
         .catch((err) => console.warn('❌ Error al registrar SW:', err));
     });
