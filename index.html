@@ -1146,7 +1146,7 @@ async function fetchAPI(path) {
   // ================== PWA: Registro del Service Worker ==================
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js')
+      navigator.serviceWorker.register('sw.js?v=2')
         .then((reg) => console.log('✅ Service Worker registrado:', reg.scope))
         .catch((err) => console.warn('❌ Error al registrar SW:', err));
     });
